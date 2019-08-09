@@ -1,6 +1,9 @@
 package com.android.mygpstracking;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -54,8 +57,9 @@ import javax.annotation.Nullable;
 
 public class GetLocationActivity extends AppCompatActivity   {
     //Keys
-    public static final String KEY_TITLE = "title";
-    public static final String KEY_THOUGHT = "thought";
+    public static final String KEY_LAT = "lat";
+    public static final String KEY_LONG = "log";
+    public static final String KEY_Token = "token";
 
     //Connection to Firestore
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -69,8 +73,8 @@ public class GetLocationActivity extends AppCompatActivity   {
     private LocationListener locationListener;
 
 
-    private DocumentReference locationRef = db.collection("UserLocation")
-            .document("Location");
+    private DocumentReference locationRef = db.collection("loct-view")
+            .document("loct-view-user");
 
 
 
@@ -79,10 +83,10 @@ public class GetLocationActivity extends AppCompatActivity   {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_get_location);
-
-        saveButton = findViewById(R.id.save_button);
-        enterTitle = findViewById(R.id.edit_text_title);
-        enterThought = findViewById(R.id.edit_text_thought);
+//
+//        saveButton = findViewById(R.id.save_button);
+//        enterTitle = findViewById(R.id.edit_text_title);
+//        enterThought = findViewById(R.id.edit_text_thought);
 
 
                 locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -90,7 +94,7 @@ public class GetLocationActivity extends AppCompatActivity   {
                     @Override
                     public void onLocationChanged(Location location) {
                         Log.d("My Locations: ", location.toString());
-
+/*
                         sendFCMPush(location.getLatitude(), location.getLongitude());
                         // mMap.addMarker(new MarkerOptions().position(location.getLatitude(), location.getLongitude(), 1));
 
@@ -100,8 +104,30 @@ public class GetLocationActivity extends AppCompatActivity   {
                         String longt = prefs.getString("longt", "No name defined");//"No name defined" is the default value.
                         String lat = prefs.getString("lat", "no lang"); //0 is the default value.
                         Log.d("tag", "onLocationChanged:  get location from fcm " + longt + lat);
-                        sendFCMPush(location.getLatitude(), location.getLongitude());
+                        sendFCMPush(location.getLatitude(), location.getLongitude());*/
 
+                        Map<String , Object> data=new HashMap<>();
+                        data.put(KEY_LAT, location.getLatitude());
+                        data.put(KEY_LONG,location.getLongitude());
+                        data.put(KEY_Token,"fesgfvsgvsgdgfdgdsrgd");
+
+
+                        locationRef.set(data)
+                                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void aVoid) {
+                                        Toast.makeText(GetLocationActivity.this,
+                                                "Success", Toast.LENGTH_LONG)
+                                                .show();
+
+                                    }
+                                })
+                                .addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        Log.d("tag", "onFailure: " + e.toString());
+                                    }
+                                });
 
                     }
 
@@ -117,7 +143,7 @@ public class GetLocationActivity extends AppCompatActivity   {
 
                     @Override
                     public void onProviderDisabled(String provider) {
-                        //showGPSDisabledAlertToUser();
+                        showGPSDisabledAlertToUser();
 
                     }
                 };
@@ -155,6 +181,7 @@ public class GetLocationActivity extends AppCompatActivity   {
 
 
 
+/*
     private void sendFCMPush(double lat , double logt) {
 
         String otherMbToken="cqPyCsygSHA:APA91bGxESdHv4wEN8l5_jw6uvJ0sE7dTNb3rxGJgKDcKw2WQ7JoKeybh-4kLrdmAKii3GYIjtN0fKg43lacMpzaqoQZxCRyk9pyR5q2v92Rm4IPdMQ_lJs5xvcrTctx99F_W7KU9M_2";
@@ -223,6 +250,30 @@ public class GetLocationActivity extends AppCompatActivity   {
         RetryPolicy policy = new DefaultRetryPolicy(socketTimeout, DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT);
         jsObjRequest.setRetryPolicy(policy);
         requestQueue.add(jsObjRequest);
+    }
+*/
+
+
+    private void showGPSDisabledAlertToUser () {
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+        alertDialogBuilder.setMessage("GPS is disabled in your device. Would you like to enable it?")
+                .setCancelable(false)
+                .setPositiveButton("Goto Settings Page To Enable GPS",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                                Intent callGPSSettingIntent = new Intent(
+                                        android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                                startActivity(callGPSSettingIntent);
+                            }
+                        });
+        alertDialogBuilder.setNegativeButton("Cancel",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                    }
+                });
+        AlertDialog alert = alertDialogBuilder.create();
+        alert.show();
     }
 
 

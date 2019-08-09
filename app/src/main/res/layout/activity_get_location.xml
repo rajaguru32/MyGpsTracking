@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/cardview_dark_background"
+    >
 
-    <EditText
+    <!--<EditText
         android:id="@+id/edit_text_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -29,5 +31,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="lat and lang"
+        android:id="@+id/text_view"/>-->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:hint="sending location.."
+        android:textSize="20sp"
+        android:gravity="center"
         android:id="@+id/text_view"/>
+
+
 </LinearLayout>

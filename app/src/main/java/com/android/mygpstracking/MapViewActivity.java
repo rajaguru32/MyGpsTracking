@@ -45,8 +45,17 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -57,13 +66,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 public class MapViewActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    public MyBroadcastReceiver myReceiver;
+   // public MyBroadcastReceiver myReceiver;
 
     //Keys
-    public static final String KEY_TITLE = "title";
-    public static final String KEY_THOUGHT = "thought";
+    //Keys
+    public static final String KEY_LAT = "lat";
+    public static final String KEY_LONG = "log";
+    public static final String KEY_Token = "token";
+
 
     private GoogleMap mMap;
     private LocationManager locationManager;
@@ -71,9 +85,12 @@ public class MapViewActivity extends AppCompatActivity implements OnMapReadyCall
     //Connection to Firestore
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     //LocationTheard theard;
-    private DocumentReference sendlocation = db.collection("UserLocation").document("Location");
+
+    private DocumentReference locationRef = db.collection("loct-view")
+            .document("loct-view-user");
 
     SharedPreferences prefs;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,34 +101,122 @@ public class MapViewActivity extends AppCompatActivity implements OnMapReadyCall
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-//        sendFCMPush();
+
+        locationRef.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot snapshot,
+                                @Nullable FirebaseFirestoreException e) {
+                Double title = snapshot.getDouble(KEY_LAT);
+                Double thought = snapshot.getDouble(KEY_LONG);
+                        LatLng currenetLocation = new LatLng(title, thought);
+                        mMap.clear();
+        mMap.addMarker(new MarkerOptions().position(currenetLocation).title("New Location"));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(currenetLocation));
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currenetLocation, 20));
+                Log.d("taf", "onEvent: started" + title + " "+ thought);
+                if (e != null) {
+                    Log.w("tag", "Listen failed.", e);
+                    return;
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    Log.d("", "Current data: " + snapshot.getData());
+                } else {
+                    Log.d("", "Current data: null");
+                }
+            }
+        });
 
 
-
-
+//        locationRef.get()
+//                       .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+//                            @Override
+//                            public void onSuccess(DocumentSnapshot documentSnapshot) {
+//                                if (documentSnapshot.exists()) {
+//
+//                                  //  Journal journal = documentSnapshot.toObject(Journal.class);
+//                                   Double title = documentSnapshot.getDouble(KEY_LAT);
+//                                  Double thought = documentSnapshot.getDouble(KEY_LONG);
+//                                    Log.d("tag", "onSuccess: da " + documentSnapshot);
+//
+////                                    if (journal != null) {
+////                                        recTitle.setText(journal.getTitle());
+////                                        recThought.setText(journal.getThought());
+////                                    }
+//                                    Toast.makeText(MapViewActivity.this,
+//                                            "No data exists" + title,
+//                                            Toast.LENGTH_LONG)
+//                                            .show();
+//
+//
+//                                }else {
+//                                     Toast.makeText(MapViewActivity.this,
+//                                             "No data exists",
+//                                             Toast.LENGTH_LONG)
+//                                             .show();
+//                                }
+//
+//                            }
+//                        });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        locationRef.get()
+                .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                    @Override
+                    public void onSuccess(DocumentSnapshot documentSnapshot) {
+                        if (documentSnapshot.exists()) {
+
+                            //  Journal journal = documentSnapshot.toObject(Journal.class);
+                            Double title = documentSnapshot.getDouble(KEY_LAT);
+                            Double thought = documentSnapshot.getDouble(KEY_LONG);
+                            Log.d("tag", "onSuccess: da " + documentSnapshot);
+
+//                                    if (journal != null) {
+//                                        recTitle.setText(journal.getTitle());
+//                                        recThought.setText(journal.getThought());
+//                                    }
+                            Toast.makeText(MapViewActivity.this,
+                                    "No data exists" + title,
+                                    Toast.LENGTH_LONG)
+                                    .show();
 
 
-/*    Runnable locationRunnable =new Runnable() {
-        @Override
-        public void run() {
+                        }else {
+                            Toast.makeText(MapViewActivity.this,
+                                    "No data exists",
+                                    Toast.LENGTH_LONG)
+                                    .show();
+                        }
 
-        }
-    };
-    */
-
-
+                    }
+                });
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
         mMap.clear(); // clears our map
+  /*
+        ValueEventListener postListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        };*/
+
+        mMap.clear(); // clears our map
 
         //sendFCMPush(location.getLatitude(), location.getLongitude());
         // mMap.addMarker(new MarkerOptions().position(location.getLatitude(), location.getLongitude(), 1));
-
 
         SharedPreferences prefs = getSharedPreferences("MY_PREFS_NAME", MODE_PRIVATE);
 
@@ -119,125 +224,17 @@ public class MapViewActivity extends AppCompatActivity implements OnMapReadyCall
         String lat = prefs.getString("lat", "no lang"); //0 is the default value.
 
 
+
         //  Log.d("tag", "onLocationChanged:  get location from fcm " + longt + lat);
 
-        double longitude = Double.parseDouble(longt);
-        double latitude = Double.parseDouble(lat);
+//                double longitude =Double.parseDouble(longt);
+//                        double latitude=Double.parseDouble(lat);
 
-        Log.d("tag", "onLocationChanged:  get location from fcm " + latitude + "  " + longitude);
+        //  Log.d("tag", "onLocationChanged:  get location from fcm " + latitude +"  "+longitude);
 
-        // Add a marker in Sydney and move the camera
-
-
-       // LatLng newLocation = new LatLng(latitude, longitude);
-                // prefs = getSharedPreferences("MY_PREFS_NAME", MODE_PRIVATE);
-
-      /*  String longt=" hi";
-         longt = prefs.getString("longt", "No name defined");//"No name defined" is the default value.
-                String lat = prefs.getString("lat", "no lang"); //0 is the default value.
-
-
-                //  Log.d("tag", "onLocationChanged:  get location from fcm " + longt + lat);
-
-                double longitude = Double.parseDouble(longt);
-                double latitude = Double.parseDouble(lat);*/
-
-                Log.d("tag", "onLocationChanged:  get location from fcm " + longt + "  " + lat);
-
-                // Your code to run in GUI thread here
-                LatLng newLocation = new LatLng(latitude, longitude);
-
-                mMap.addMarker(new MarkerOptions().position(newLocation).title("current location"));
-
-                mMap.addMarker(new MarkerOptions().position(newLocation).title("New Location"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(newLocation, 19));
-
-
-
-        if (ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    Activity#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for Activity#requestPermissions for more details.
-            return;
-        }
-      //  mMap.setMyLocationEnabled(true);
-
-      /*  locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                Log.d("My Locations: ", location.toString());
-                mMap.clear(); // clears our map
-
-                //sendFCMPush(location.getLatitude(), location.getLongitude());
-                // mMap.addMarker(new MarkerOptions().position(location.getLatitude(), location.getLongitude(), 1));
-
-                SharedPreferences prefs = getSharedPreferences("MY_PREFS_NAME", MODE_PRIVATE);
-
-                    String longt = prefs.getString("longt", "No name defined");//"No name defined" is the default value.
-                    String lat = prefs.getString("lat", "no lang"); //0 is the default value.
-
-
-              //  Log.d("tag", "onLocationChanged:  get location from fcm " + longt + lat);
-
-                double longitude =Double.parseDouble(longt);
-                        double latitude=Double.parseDouble(lat);
-
-                Log.d("tag", "onLocationChanged:  get location from fcm " + latitude +"  "+longitude);
-
-                // Add a marker in Sydney and move the camera
-                LatLng newLocation = new LatLng(latitude,longitude );
-                mMap.addMarker(new MarkerOptions().position(newLocation).title("New Location"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(newLocation, 20));
-
-              *//*  Map<String , Object> data=new HashMap<>();
-                data.put(KEY_TITLE, location.getLatitude());
-                data.put(KEY_THOUGHT,location.getLongitude());
-
-
-                sendlocation.set(data)
-                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                            @Override
-                            public void onSuccess(Void aVoid) {
-                                Toast.makeText(MapViewActivity.this,
-                                        "Success", Toast.LENGTH_LONG)
-                                        .show();
-
-                            }
-                        })
-                        .addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Log.d("tag", "onFailure: " + e.toString());
-                            }
-                        });*//*
-
-
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-                showGPSDisabledAlertToUser();
-
-            }
-        };
 
         if (Build.VERSION.SDK_INT < 23) {
-            if (ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 // TODO: Consider calling
                 //    Activity#requestPermissions
                 // here to request the missing permissions, and then overriding
@@ -247,24 +244,23 @@ public class MapViewActivity extends AppCompatActivity implements OnMapReadyCall
                 // for Activity#requestPermissions for more details.
                 return;
             }
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-        }else {
+            //  locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        } else {
             if (ContextCompat.checkSelfPermission(this,
                     Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 //Ask for permission
-                ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
 
-            }else {
+            } else {
                 // we have permission!
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                //       locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
             }
         }
-*/
+
 
 //        LatLng washington = new LatLng(47.614762, -122.476333);
 //        mMap.addMarker(new MarkerOptions().position(washington).title("New Location"));
 //        mMap.moveCamera(CameraUpdateFactory.newLatLng(washington));
-
 
 
     }
@@ -279,36 +275,39 @@ public class MapViewActivity extends AppCompatActivity implements OnMapReadyCall
 
             if (ContextCompat.checkSelfPermission(this,
                     Manifest.permission.ACCESS_FINE_LOCATION)
-                    == PackageManager.PERMISSION_GRANTED)
+                    == PackageManager.PERMISSION_GRANTED) {
 
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0,  locationListener);
+                // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0,  locationListener);
+
+            }
 
         }
-
     }
 
 
-    private void showGPSDisabledAlertToUser() {
-        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
-        alertDialogBuilder.setMessage("GPS is disabled in your device. Would you like to enable it?")
-                .setCancelable(false)
-                .setPositiveButton("Goto Settings Page To Enable GPS",
-                        new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int id) {
-                                Intent callGPSSettingIntent = new Intent(
-                                        android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                                startActivity(callGPSSettingIntent);
-                            }
-                        });
-        alertDialogBuilder.setNegativeButton("Cancel",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                    }
-                });
-        AlertDialog alert = alertDialogBuilder.create();
-        alert.show();
+        private void showGPSDisabledAlertToUser () {
+            AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+            alertDialogBuilder.setMessage("GPS is disabled in your device. Would you like to enable it?")
+                    .setCancelable(false)
+                    .setPositiveButton("Goto Settings Page To Enable GPS",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int id) {
+                                    Intent callGPSSettingIntent = new Intent(
+                                            android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                                    startActivity(callGPSSettingIntent);
+                                }
+                            });
+            alertDialogBuilder.setNegativeButton("Cancel",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.cancel();
+                        }
+                    });
+            AlertDialog alert = alertDialogBuilder.create();
+            alert.show();
+        }
     }
+
 
 /*
     private void sendFCMPush(double lat , double logt) {
@@ -378,6 +377,7 @@ public class MapViewActivity extends AppCompatActivity implements OnMapReadyCall
         jsObjRequest.setRetryPolicy(policy);
         requestQueue.add(jsObjRequest);
     }*/
+/*
 
 
     @Override
@@ -418,4 +418,4 @@ public class MapViewActivity extends AppCompatActivity implements OnMapReadyCall
 
 
 }
-
+*/
