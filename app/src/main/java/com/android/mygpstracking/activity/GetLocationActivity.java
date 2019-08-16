@@ -1,10 +1,9 @@
-package com.android.mygpstracking;
+package com.android.mygpstracking.activity;
 
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -12,10 +11,6 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -23,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.android.mygpstracking.R;
 import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
@@ -32,27 +28,16 @@ import com.android.volley.RetryPolicy;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreException;
-import com.google.gson.JsonObject;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.annotation.Nullable;
 
 
 public class GetLocationActivity extends AppCompatActivity   {
@@ -65,9 +50,6 @@ public class GetLocationActivity extends AppCompatActivity   {
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     private static final String TAG = "MainActivity";
-    private EditText enterTitle;
-    private EditText enterThought;
-    public Button saveButton, showButton, updateTitle, deleteThought;
 
     private LocationManager locationManager;
     private LocationListener locationListener;
@@ -93,7 +75,7 @@ public class GetLocationActivity extends AppCompatActivity   {
                 locationListener = new LocationListener() {
                     @Override
                     public void onLocationChanged(Location location) {
-                        Log.d("My Locations: ", location.toString());
+
 /*
                         sendFCMPush(location.getLatitude(), location.getLongitude());
                         // mMap.addMarker(new MarkerOptions().position(location.getLatitude(), location.getLongitude(), 1));
@@ -105,6 +87,10 @@ public class GetLocationActivity extends AppCompatActivity   {
                         String lat = prefs.getString("lat", "no lang"); //0 is the default value.
                         Log.d("tag", "onLocationChanged:  get location from fcm " + longt + lat);
                         sendFCMPush(location.getLatitude(), location.getLongitude());*/
+
+                        //for mongodb
+                        Log.d("My Locations: ","location gets"   + location.toString());
+                        sendFCMPush(String.valueOf(location.getLatitude()),String.valueOf(location.getLongitude()) );
 
                         Map<String , Object> data=new HashMap<>();
                         data.put(KEY_LAT, location.getLatitude());
@@ -177,6 +163,52 @@ public class GetLocationActivity extends AppCompatActivity   {
 
 
 
+    }
+    private void sendFCMPush(String lat , String logt) {
+
+        Log.d(TAG, "sendFCMPush:  function started");
+        JSONObject dataobjData = null;
+
+        try {
+
+            dataobjData = new JSONObject();
+            dataobjData.put("name", "rajaguru");
+            dataobjData.put("longaitude",lat);
+            dataobjData.put("latitude",logt);
+
+            Log.d("object","location object"+ dataobjData);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+
+
+        JsonObjectRequest jsObjRequest = new JsonObjectRequest(Request.Method.POST, "http://localhost:8080/api", dataobjData,
+                new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        Log.e("!_@@_SUCESS", response + "");
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e("!_@@_Errors--", error + "");
+                    }
+                }) {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("Content-Type", "application/json");
+                return params;
+            }
+        };
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+        int socketTimeout = 1000 * 60;// 60 seconds
+        RetryPolicy policy = new DefaultRetryPolicy(socketTimeout, DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT);
+        jsObjRequest.setRetryPolicy(policy);
+        requestQueue.add(jsObjRequest);
     }
 
 
