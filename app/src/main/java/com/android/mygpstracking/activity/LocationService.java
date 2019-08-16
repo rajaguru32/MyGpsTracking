@@ -50,5 +50,15 @@ public class LocationService extends AppCompatActivity  implements View.OnClickL
 
     }
 
+    private void shareLocationToFacebook() {
 
+        Intent sendLocation= new Intent();
+        sendLocation.setAction(Intent.ACTION_SEND);
+        sendLocation.putExtra(Intent.EXTRA_TEXT, "this is my sample text");
+        sendLocation.setType("text/plain");
+        sendLocation.setPackage("com.whatsapp");
+        startActivity(sendLocation);
+
+
+    }
 }
